@@ -1,0 +1,301 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\Users\james>
+PS C:\Users\james> $folder = "C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - modified"
+PS C:\Users\james>
+PS C:\Users\james> $privateKey = Join-Path $folder "UTO_private.pem"
+PS C:\Users\james> $publicKey = Join-Path $folder "UTO_public.pem"
+PS C:\Users\james> $signature = Join-Path $folder "sig_UTO_P0000000001.dat"
+PS C:\Users\james>
+PS C:\Users\james> $files = @(
+>>     "DG1_UTO_P0000000001.dat",
+>>     "DG2_UTO_P0000000001.dat",
+>>     "DG3_UTO_P0000000001.dat",
+>>     "DG5_UTO_P0000000001.dat"
+>> )
+PS C:\Users\james>
+PS C:\Users\james> $tempFile = Join-Path $env:TEMP ([guid]::NewGuid().ToString() + ".dat")
+PS C:\Users\james> $newSignature = Join-Path $env:TEMP ([guid]::NewGuid().ToString() + ".dat")
+PS C:\Users\james>
+PS C:\Users\james> try {
+>>     Write-Host "`nMIDSS MONOLITHIC SIGNATURE GENERATION"
+>>     Write-Host "======================================"
+>>
+>>     if (-not (Get-Command openssl -ErrorAction SilentlyContinue)) {
+>>         throw "OpenSSL not found."
+>>     }
+>>
+>>     foreach ($file in ($files + @("UTO_private.pem", "UTO_public.pem"))) {
+>>         if (-not (Test-Path -LiteralPath (Join-Path $folder $file) -PathType Leaf)) {
+>>             throw "Missing file: $file"
+>>         }
+>>     }
+>>
+>>     $stream = [System.IO.File]::Create($tempFile)
+>>
+>>     try {
+>>         foreach ($file in $files) {
+>>             $path = Join-Path $folder $file
+>>             $bytes = [System.IO.File]::ReadAllBytes($path)
+>>             $stream.Write($bytes, 0, $bytes.Length)
+>>             Write-Host "Included: $file"
+>>         }
+>>     }
+>>     finally {
+>>         $stream.Dispose()
+>>     }
+>>
+>>     Write-Host "`nGenerating RSA SHA-256 signature..."
+>>
+>>     & openssl dgst -sha256 -sign $privateKey -sigopt rsa_padding_mode:pkcs1 -out $newSignature $tempFile
+>>
+>>     if ($LASTEXITCODE -ne 0) {
+>>         throw "Signature generation failed."
+>>     }
+>>
+>>     Write-Host "`nVerifying generated signature..."
+>>
+>>     & openssl dgst -sha256 -verify $publicKey -signature $newSignature -sigopt rsa_padding_mode:pkcs1 $tempFile
+>>
+>>     if ($LASTEXITCODE -ne 0) {
+>>         throw "Signature verification failed. Existing signature was not replaced."
+>>     }
+>>
+>>     Copy-Item -LiteralPath $newSignature -Destination $signature -Force -ErrorAction Stop
+>>
+>>     Write-Host "`nSIGNATURE GENERATED SUCCESSFULLY" -ForegroundColor Green
+>>     Write-Host "Verification: VALID" -ForegroundColor Green
+>>     Write-Host "File: $signature"
+>>     Write-Host "Size: $((Get-Item -LiteralPath $signature).Length) bytes"
+>>     Write-Host "SHA256: $((Get-FileHash -LiteralPath $signature -Algorithm SHA256).Hash)"
+>> }
+>> catch {
+>>     Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
+>> }
+
+MIDSS MONOLITHIC SIGNATURE GENERATION
+======================================
+Included: DG1_UTO_P0000000001.dat
+Included: DG2_UTO_P0000000001.dat
+Included: DG3_UTO_P0000000001.dat
+Included: DG5_UTO_P0000000001.dat
+
+Generating RSA SHA-256 signature...
+
+Verifying generated signature...
+Verified OK
+
+SIGNATURE GENERATED SUCCESSFULLY
+Verification: VALID
+File: C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - modified\sig_UTO_P0000000001.dat
+Size: 384 bytes
+SHA256: 997C21B04E8A5C48BDE85DEF5273888F54E3C97FE8B566BF084A3F88BBA733BF
+PS C:\Users\james>
+PS C:\Users\james> Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
+PS C:\Users\james> Remove-Item -LiteralPath $newSignature -Force -ErrorAction SilentlyContinue
+PS C:\Users\james>
+PS C:\Users\james> # PRE MODIFICATION
+PS C:\Users\james>
+PS C:\Users\james> $folder = "C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - modified"
+PS C:\Users\james>
+PS C:\Users\james> $publicKey = Join-Path $folder "UTO_public.pem"
+PS C:\Users\james> $signature = Join-Path $folder "sig_UTO_P0000000001.dat"
+PS C:\Users\james>
+PS C:\Users\james> $files = @(
+>>     "DG1_UTO_P0000000001.dat",
+>>     "DG2_UTO_P0000000001.dat",
+>>     "DG3_UTO_P0000000001.dat",
+>>     "DG5_UTO_P0000000001.dat"
+>> )
+PS C:\Users\james>
+PS C:\Users\james> $tempFile = Join-Path $env:TEMP ([guid]::NewGuid().ToString() + ".dat")
+PS C:\Users\james>
+PS C:\Users\james> try {
+>>     Write-Host "`nMIDSS MONOLITHIC SIGNATURE VERIFICATION"
+>>     Write-Host "PRE MODIFICATION"
+>>     Write-Host "======================================="
+>>
+>>     if (-not (Get-Command openssl -ErrorAction SilentlyContinue)) {
+>>         throw "OpenSSL not found."
+>>     }
+>>
+>>     foreach ($file in ($files + @("UTO_public.pem", "sig_UTO_P0000000001.dat"))) {
+>>         if (-not (Test-Path -LiteralPath (Join-Path $folder $file) -PathType Leaf)) {
+>>             throw "Missing file: $file"
+>>         }
+>>     }
+>>
+>>     $stream = [System.IO.File]::Create($tempFile)
+>>
+>>     try {
+>>         foreach ($file in $files) {
+>>             $path = Join-Path $folder $file
+>>             $bytes = [System.IO.File]::ReadAllBytes($path)
+>>             $stream.Write($bytes, 0, $bytes.Length)
+>>
+>>             Write-Host "Included: $file"
+>>             Write-Host "SHA256: $((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash)"
+>>         }
+>>     }
+>>     finally {
+>>         $stream.Dispose()
+>>     }
+>>
+>>     Write-Host "`nVerifying RSA SHA-256 signature..."
+>>
+>>     & openssl dgst -sha256 `
+>>         -verify $publicKey `
+>>         -signature $signature `
+>>         -sigopt rsa_padding_mode:pkcs1 `
+>>         $tempFile
+>>
+>>     $result = $LASTEXITCODE
+>>
+>>     Write-Host "`n======================================="
+>>
+>>     if ($result -eq 0) {
+>>         Write-Host "PRE MODIFICATION: SIGNATURE VALID" -ForegroundColor Green
+>>         Write-Host "All signed data groups passed verification."
+>>     }
+>>     else {
+>>         Write-Host "PRE MODIFICATION: SIGNATURE INVALID" -ForegroundColor Red
+>>         Write-Host "The signature does not match the combined data."
+>>     }
+>>
+>>     Write-Host "======================================="
+>> }
+>> catch {
+>>     Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
+>> }
+
+MIDSS MONOLITHIC SIGNATURE VERIFICATION
+PRE MODIFICATION
+=======================================
+Included: DG1_UTO_P0000000001.dat
+SHA256: ACDBA15BBD85B1C86CC92534723D8F6B9C32CD854D12A4BB455F554C80194A9F
+Included: DG2_UTO_P0000000001.dat
+SHA256: 5950AB480804687DCC7DF913DD590793A6B4A79C728685845D062B7EDD7A8884
+Included: DG3_UTO_P0000000001.dat
+SHA256: D385F16A0BFD7D20F2A2B2A0B2AE629E00D7CD1143791FABF5905F5423E58969
+Included: DG5_UTO_P0000000001.dat
+SHA256: D32ECCE887EEA50F3207AB6A1C2F5C093A65506C06B01F7A33097F7B444E21F6
+
+Verifying RSA SHA-256 signature...
+Verified OK
+
+=======================================
+PRE MODIFICATION: SIGNATURE VALID
+All signed data groups passed verification.
+=======================================
+PS C:\Users\james>
+PS C:\Users\james> Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
+PS C:\Users\james>
+PS C:\Users\james>
+
+PS C:\Users\james> # POST MODIFICATION
+PS C:\Users\james>
+PS C:\Users\james> $folder = "C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - modified"
+PS C:\Users\james>
+PS C:\Users\james> $publicKey = Join-Path $folder "UTO_public.pem"
+PS C:\Users\james> $signature = Join-Path $folder "sig_UTO_P0000000001.dat"
+PS C:\Users\james>
+PS C:\Users\james> $files = @(
+>>     "DG1_UTO_P0000000001.dat",
+>>     "DG2_UTO_P0000000001.dat",
+>>     "DG3_UTO_P0000000001.dat",
+>>     "DG5_UTO_P0000000001.dat"
+>> )
+PS C:\Users\james>
+PS C:\Users\james> $tempFile = Join-Path $env:TEMP ([guid]::NewGuid().ToString() + ".dat")
+PS C:\Users\james>
+PS C:\Users\james> try {
+>>     Write-Host "`nMIDSS MONOLITHIC SIGNATURE VERIFICATION"
+>>     Write-Host "POST MODIFICATION"
+>>     Write-Host "======================================="
+>>
+>>     if (-not (Get-Command openssl -ErrorAction SilentlyContinue)) {
+>>         throw "OpenSSL not found."
+>>     }
+>>
+>>     foreach ($file in ($files + @("UTO_public.pem", "sig_UTO_P0000000001.dat"))) {
+>>         if (-not (Test-Path -LiteralPath (Join-Path $folder $file) -PathType Leaf)) {
+>>             throw "Missing file: $file"
+>>         }
+>>     }
+>>
+>>     $stream = [System.IO.File]::Create($tempFile)
+>>
+>>     try {
+>>         foreach ($file in $files) {
+>>             $path = Join-Path $folder $file
+>>             $bytes = [System.IO.File]::ReadAllBytes($path)
+>>             $stream.Write($bytes, 0, $bytes.Length)
+>>
+>>             Write-Host "Included: $file"
+>>             Write-Host "SHA256: $((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash)"
+>>         }
+>>     }
+>>     finally {
+>>         $stream.Dispose()
+>>     }
+>>
+>>     Write-Host "`nVerifying RSA SHA-256 signature..."
+>>
+>>     & openssl dgst -sha256 `
+>>         -verify $publicKey `
+>>         -signature $signature `
+>>         -sigopt rsa_padding_mode:pkcs1 `
+>>         $tempFile
+>>
+>>     $result = $LASTEXITCODE
+>>
+>>     Write-Host "`n======================================="
+>>
+>>     if ($result -eq 0) {
+>>         Write-Host "POST MODIFICATION: SIGNATURE VALID" -ForegroundColor Green
+>>         Write-Host "The combined data matches the digital signature."
+>>     }
+>>     else {
+>>         Write-Host "POST MODIFICATION: SIGNATURE INVALID" -ForegroundColor Red
+>>         Write-Host "The combined data does not match the digital signature."
+>>     }
+>>
+>>     Write-Host "======================================="
+>> }
+>> catch {
+>>     Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
+>> }
+
+MIDSS MONOLITHIC SIGNATURE VERIFICATION
+POST MODIFICATION
+=======================================
+Included: DG1_UTO_P0000000001.dat
+SHA256: 6944CEEFD27D4F707626A62E85F84F16A287D218D3EB9A9AC63CCBC1378711C2
+Included: DG2_UTO_P0000000001.dat
+SHA256: 5950AB480804687DCC7DF913DD590793A6B4A79C728685845D062B7EDD7A8884
+Included: DG3_UTO_P0000000001.dat
+SHA256: D385F16A0BFD7D20F2A2B2A0B2AE629E00D7CD1143791FABF5905F5423E58969
+Included: DG5_UTO_P0000000001.dat
+SHA256: D32ECCE887EEA50F3207AB6A1C2F5C093A65506C06B01F7A33097F7B444E21F6
+
+Verifying RSA SHA-256 signature...
+Verification failure
+1C1A0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:crypto\evp\evp_fetch.c:476:Global default library context, Algorithm (dgst : 0), Properties (<null>)
+1C1A0000:error:02000068:rsa routines:ossl_rsa_verify:bad signature:crypto\rsa\rsa_sign.c:441:
+1C1A0000:error:1C880004:Provider routines:rsa_verify_directly:RSA lib:providers\implementations\signature\rsa_sig.c:1072:
+
+=======================================
+POST MODIFICATION: SIGNATURE INVALID
+The combined data does not match the digital signature.
+=======================================
+PS C:\Users\james> finally {
+>>     Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
+>> }
+finally : The term 'finally' is not recognized as the name of a cmdlet, function, script file, or operable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ finally {
++ ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (finally:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException

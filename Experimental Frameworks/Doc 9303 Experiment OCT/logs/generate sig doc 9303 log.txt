@@ -1,0 +1,93 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\Users\james>
+PS C:\Users\james> $folder = "C:\Users\james\Desktop\Doc 9303 Experiment OCT\Doc 9303 - Unmodified"
+PS C:\Users\james>
+PS C:\Users\james> $openssl = "C:\Program Files\OpenSSL-Win64\bin\openssl.exe"
+PS C:\Users\james>
+PS C:\Users\james> $files = @(
+>>     "UTO-PP123456789-DG1 File.dat",
+>>     "UTO-PP123456789-DG2 File.dat",
+>>     "UTO-PP123456789-DG15 File.dat",
+>>     "UTO-PP123456789-EF.COM File.dat"
+>> )
+PS C:\Users\james>
+PS C:\Users\james> $privateKey = Join-Path $folder "rsa4096_private.pem"
+PS C:\Users\james> $publicKey = Join-Path $folder "rsa4096_public.pem"
+PS C:\Users\james> $signature = Join-Path $folder "UTO-PP123456789-EF.SOD File.dat"
+PS C:\Users\james> $tempFile = Join-Path $folder "signature_input.tmp"
+PS C:\Users\james>
+PS C:\Users\james> if (-not (Test-Path $openssl)) {
+>>     throw "OpenSSL not found."
+>> }
+PS C:\Users\james>
+PS C:\Users\james> foreach ($file in $files) {
+>>     if (-not (Test-Path (Join-Path $folder $file))) {
+>>         throw "Missing file: $file"
+>>     }
+>> }
+PS C:\Users\james>
+PS C:\Users\james> # Generate RSA-4096 keys if needed
+PS C:\Users\james> if (-not (Test-Path $privateKey)) {
+>>     & $openssl genpkey -algorithm RSA `
+>>         -pkeyopt rsa_keygen_bits:4096 `
+>>         -out $privateKey
+>>
+>>     if ($LASTEXITCODE -ne 0) {
+>>         throw "Private key generation failed."
+>>     }
+>> }
+PS C:\Users\james>
+PS C:\Users\james> # Export matching public key
+PS C:\Users\james> & $openssl pkey -in $privateKey -pubout -out $publicKey
+PS C:\Users\james>
+PS C:\Users\james> if ($LASTEXITCODE -ne 0) {
+>>     throw "Public key export failed."
+>> }
+PS C:\Users\james>
+PS C:\Users\james> # Combine all four files in a fixed order
+PS C:\Users\james> $stream = [System.IO.File]::Create($tempFile)
+PS C:\Users\james>
+PS C:\Users\james> try {
+>>     foreach ($file in $files) {
+>>         $path = Join-Path $folder $file
+>>         $bytes = [System.IO.File]::ReadAllBytes($path)
+>>         $stream.Write($bytes, 0, $bytes.Length)
+>>     }
+>> }
+>> finally {
+>>     $stream.Dispose()
+>> }
+PS C:\Users\james>
+PS C:\Users\james> # Generate monolithic RSA-SHA256 signature
+PS C:\Users\james> & $openssl dgst -sha256 `
+>>     -sign $privateKey `
+>>     -out $signature `
+>>     $tempFile
+PS C:\Users\james>
+PS C:\Users\james> if ($LASTEXITCODE -ne 0) {
+>>     Remove-Item $tempFile -ErrorAction SilentlyContinue
+>>     throw "Digital signature generation failed."
+>> }
+PS C:\Users\james>
+PS C:\Users\james> # Verify signature immediately
+PS C:\Users\james> & $openssl dgst -sha256 `
+>>     -verify $publicKey `
+>>     -signature $signature `
+>>     $tempFile
+Verified OK
+PS C:\Users\james>
+PS C:\Users\james> if ($LASTEXITCODE -ne 0) {
+>>     Remove-Item $tempFile -ErrorAction SilentlyContinue
+>>     throw "Signature verification failed."
+>> }
+PS C:\Users\james>
+PS C:\Users\james> Remove-Item $tempFile
+PS C:\Users\james>
+PS C:\Users\james> Write-Host "Signature generated and verified successfully." -ForegroundColor Green
+Signature generated and verified successfully.
+PS C:\Users\james> Write-Host "Signature: $signature"
+Signature: C:\Users\james\Desktop\Doc 9303 Experiment OCT\Doc 9303 - Unmodified\UTO-PP123456789-EF.SOD File.dat
+PS C:\Users\james> Write-Host "Public key: $publicKey"
+Public key: C:\Users\james\Desktop\Doc 9303 Experiment OCT\Doc 9303 - Unmodified\rsa4096_public.pem

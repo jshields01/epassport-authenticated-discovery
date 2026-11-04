@@ -1,0 +1,84 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\Users\james>
+PS C:\Users\james> $folder = "C:\Users\james\Desktop\Doc 9303 Experiment OCT\Doc 9303 - Modified"
+PS C:\Users\james>
+PS C:\Users\james> $files = @(
+>>     "UTO-PP123456789-DG1 File.dat",
+>>     "UTO-PP123456789-DG2 File.dat",
+>>     "UTO-PP123456789-DG15 File.dat",
+>>     "UTO-PP123456789-EF.COM File.dat"
+>> )
+PS C:\Users\james>
+PS C:\Users\james> $signature = Join-Path $folder "UTO-PP123456789-EF.SOD File.dat"
+PS C:\Users\james> $publicKey = Join-Path $folder "rsa4096_public.pem"
+PS C:\Users\james> $openssl = "C:\Program Files\OpenSSL-Win64\bin\openssl.exe"
+PS C:\Users\james>
+PS C:\Users\james> $tempFile = Join-Path $env:TEMP "passport_verify_combined.dat"
+PS C:\Users\james>
+PS C:\Users\james> try {
+>>     $output = [System.IO.File]::Create($tempFile)
+>>
+>>     try {
+>>         foreach ($file in $files) {
+>>             $path = Join-Path $folder $file
+>>             $bytes = [System.IO.File]::ReadAllBytes($path)
+>>             $output.Write($bytes, 0, $bytes.Length)
+>>         }
+>>     }
+>>     finally {
+>>         $output.Dispose()
+>>     }
+>>
+>>     & $openssl dgst -sha256 `
+>>         -verify $publicKey `
+>>         -signature $signature `
+>>         $tempFile
+>>
+>>     if ($LASTEXITCODE -eq 0) {
+>>         Write-Host "PASS: All four files match the digital signature." -ForegroundColor Green
+>>     }
+>>     else {
+>>         Write-Host "FAIL: Signature verification failed. Integrity NOT confirmed." -ForegroundColor Red
+>>     }
+>> }
+>> finally {
+>>     Remove-Item $tempFile -ErrorAction SilentlyContinue
+>> }
+Verified OK
+PASS: All four files match the digital signature.
+PS C:\Users\james> try {
+>>     $output = [System.IO.File]::Create($tempFile)
+>>
+>>     try {
+>>         foreach ($file in $files) {
+>>             $path = Join-Path $folder $file
+>>             $bytes = [System.IO.File]::ReadAllBytes($path)
+>>             $output.Write($bytes, 0, $bytes.Length)
+>>         }
+>>     }
+>>     finally {
+>>         $output.Dispose()
+>>     }
+>>
+>>     & $openssl dgst -sha256 `
+>>         -verify $publicKey `
+>>         -signature $signature `
+>>         $tempFile
+>>
+>>     if ($LASTEXITCODE -eq 0) {
+>>         Write-Host "PASS: All four files match the digital signature." -ForegroundColor Green
+>>     }
+>>     else {
+>>         Write-Host "FAIL: Signature verification failed. Integrity NOT confirmed." -ForegroundColor Red
+>>     }
+>> }
+>> finally {
+>>     Remove-Item $tempFile -ErrorAction SilentlyContinue
+>> }
+Verification failure
+346B0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:crypto\evp\evp_fetch.c:476:Global default library context, Algorithm (dgst : 0), Properties (<null>)
+346B0000:error:02000068:rsa routines:ossl_rsa_verify:bad signature:crypto\rsa\rsa_sign.c:441:
+346B0000:error:1C880004:Provider routines:rsa_verify_directly:RSA lib:providers\implementations\signature\rsa_sig.c:1072:
+FAIL: Signature verification failed. Integrity NOT confirmed.

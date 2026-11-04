@@ -1,0 +1,54 @@
+
+#include <stdint.h>
+#include <stddef.h>
+
+// Embedded-file index structure
+typedef struct {
+    uint8_t fileID;
+    const char *filename;
+    size_t byteLength;
+} MIDSS_FileEntry;
+
+// Embedded-file index
+MIDSS_FileEntry MIDSS_fileIndex[] = {
+    {0x01, "DG1_UTO_P0000000001.dat", 0},
+    {0x02, "DG2_UTO_P0000000001.dat", 0},
+    {0x03, "DG3_UTO_P0000000001.dat", 0},
+    {0x06, "sig_UTO_P0000000001.dat", 0}
+};
+
+// Number of embedded files
+size_t MIDSS_fileCount =
+    sizeof(MIDSS_fileIndex) / sizeof(MIDSS_fileIndex[0]);
+
+// DG1 field structure
+typedef struct {
+    uint8_t fieldID;
+    const char *value;
+} MIDSS_DG1_Field;
+
+// DG1 field index
+uint8_t DG1_fieldIndex[] = {
+    0x02, 0x03, 0x04, 0x05, 0x06,
+    0x07, 0x08, 0x09, 0x0A, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F, 0x10
+};
+
+// DG1 identity and document information
+MIDSS_DG1_Field DG1[] = {
+    {0x02, "JOHN SAMPLE"},
+    {0x03, "DOE SMITH"},
+    {0x04, "2001-03-02"},
+    {0x05, "M"},
+    {0x06, "UTO"},
+    {0x07, "UTOPIA CITY, UTO"},
+    {0x08, "P0000000001"},
+    {0x09, "2025-04-22"},
+    {0x0A, "2035-04-22"},
+    {0x0B, "UTO"},
+    {0x0C, "DEPARTMENT OF IMMIGRATION"},
+    {0x0D, "PASSPORT"},
+    {0x0E, "PP"},
+    {0x0F, "UTO-PP-2025-01"},
+    {0x10, "1.0"}
+};

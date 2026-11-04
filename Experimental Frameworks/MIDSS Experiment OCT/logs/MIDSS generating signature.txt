@@ -1,0 +1,114 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\Users\james>
+PS C:\Users\james> # MIDSS Monolithic Digital Signature Generator
+PS C:\Users\james> # RSA-SHA256
+PS C:\Users\james> # Output: sig_UTO_P0000000001.dat
+PS C:\Users\james>
+PS C:\Users\james> $folder = "C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified"
+PS C:\Users\james>
+PS C:\Users\james> $privateKey = Join-Path $folder "UTO_private.pem"
+PS C:\Users\james> $publicKey  = Join-Path $folder "UTO_public.pem"
+PS C:\Users\james> $output     = Join-Path $folder "sig_UTO_P0000000001.dat"
+PS C:\Users\james>
+PS C:\Users\james> $files = @(
+>>     "DG1_UTO_P0000000001.dat",
+>>     "DG2_UTO_P0000000001.dat",
+>>     "DG3_UTO_P0000000001.dat",
+>>     "DG5_UTO_P0000000001.dat"
+>> )
+PS C:\Users\james>
+PS C:\Users\james> Set-Location $folder
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> $ErrorActionPreference = "Stop"
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified>
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> # Verify OpenSSL is available
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> if (-not (Get-Command openssl -ErrorAction SilentlyContinue)) {
+>>     throw "OpenSSL was not found in PATH."
+>> }
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified>
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> # Verify all required files exist
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> foreach ($file in ($files + @("UTO_private.pem", "UTO_public.pem"))) {
+>>     if (-not (Test-Path -LiteralPath (Join-Path $folder $file))) {
+>>         throw "Missing required file: $file"
+>>     }
+>> }
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified>
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> # Temporary binary file containing all data groups
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> $tempFile = Join-Path $folder "MIDSS_monolithic_temp.bin"
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified>
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified> try {
+>>     # Create canonical binary package:
+>>     # 4-byte big-endian file length followed by file bytes,
+>>     # repeated in fixed DG1, DG2, DG3, DG5 order.
+>>     $stream = [System.IO.File]::Create($tempFile)
+>>
+>>     try {
+>>         foreach ($file in $files) {
+>>             $path = Join-Path $folder $file
+>>             $bytes = [System.IO.File]::ReadAllBytes($path)
+>>
+>>             if ($bytes.LongLength -gt [uint32]::MaxValue) {
+>>                 throw "File too large: $file"
+>>             }
+>>
+>>             $length = [uint32]$bytes.Length
+>>
+>>             # Encode length as uint32 big-endian
+>>             $lengthBytes = [byte[]]@(
+>>                 (($length -shr 24) -band 0xFF),
+>>                 (($length -shr 16) -band 0xFF),
+>>                 (($length -shr 8) -band 0xFF),
+>>                 ($length -band 0xFF)
+>>             )
+>>
+>>             $stream.Write($lengthBytes, 0, 4)
+>>             $stream.Write($bytes, 0, $bytes.Length)
+>>
+>>             Write-Host "Included: $file"
+>>         }
+>>     }
+>>     finally {
+>>         $stream.Dispose()
+>>     }
+>>
+>>     # Create a single RSA-SHA256 digital signature
+>>     & openssl dgst -sha256 `
+>>         -sign $privateKey `
+>>         -out $output `
+>>         $tempFile
+>>
+>>     if ($LASTEXITCODE -ne 0) {
+>>         throw "Digital signature generation failed."
+>>     }
+>>
+>>     Write-Host ""
+>>     Write-Host "Signature created: $output"
+>>
+>>     # Verify the signature with the public key
+>>     & openssl dgst -sha256 `
+>>         -verify $publicKey `
+>>         -signature $output `
+>>         $tempFile
+>>
+>>     if ($LASTEXITCODE -ne 0) {
+>>         throw "Signature verification failed."
+>>     }
+>>
+>>     Write-Host "RSA-SHA256 verification successful."
+>> }
+>> finally {
+>>     # Remove temporary package
+>>     if (Test-Path -LiteralPath $tempFile) {
+>>         Remove-Item -LiteralPath $tempFile -Force
+>>     }
+>> }
+Included: DG1_UTO_P0000000001.dat
+Included: DG2_UTO_P0000000001.dat
+Included: DG3_UTO_P0000000001.dat
+Included: DG5_UTO_P0000000001.dat
+
+Signature created: C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified\sig_UTO_P0000000001.dat
+Verified OK
+RSA-SHA256 verification successful.
+PS C:\Users\james\Desktop\MIDSS Experiment OCT\dat files - unmodified>
